@@ -30,12 +30,12 @@ func TestSetConfigFromFlags(t *testing.T) {
 
 	checkFlags := &drivers.CheckDriverOptions{
 		FlagsValues: map[string]interface{}{
-			"vmwarevclouddirector-username": "root",
-			"vmwarevclouddirector-password": "pwd",
-			"vmwarevclouddirector-vdc":      "VDC",
-			"vmwarevclouddirector-publicip": "IP",
-			"vmwarevclouddirector-org":      "org",
-			"vmwarevclouddirector-href":     "href",
+			"vmwarevclouddirector-username":    "root",
+			"vmwarevclouddirector-password":    "pwd",
+			"vmwarevclouddirector-vdc":         "VDC",
+			"vmwarevclouddirector-storprofile": "name",
+			"vmwarevclouddirector-org":         "org",
+			"vmwarevclouddirector-href":        "https://example.com/api",
 		},
 		CreateFlags: driver.GetCreateFlags(),
 	}
