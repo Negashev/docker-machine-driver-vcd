@@ -1,6 +1,7 @@
 /*
 * docker-machine-driver-vcloud-director
 * Copyright (C) 2017  Juan Manuel Irigaray
+* Copyright (C) 2022  Aleksandr Negashev (i@negash.ru)
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
 *
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+*/
 
 package vmwarevcloud
 
@@ -25,8 +26,10 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
-	govcd "github.com/vmware/govcloudair"
+	govcd "github.com/vmware/go-vcloud-director/v2/govcd"
+	"github.com/vmware/go-vcloud-director/v2/types/v56"
 
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/log"
@@ -46,6 +49,7 @@ type Driver struct {
 	PublicIP     string
 	Catalog      string
 	CatalogItem  string
+	StorProfile  string
 	DockerPort   int
 	CPUCount     int
 	MemorySize   int
@@ -65,6 +69,14 @@ const (
 	defaultDockerPort  = 2376
 	defaultInsecure    = false
 )
+
+func takeIntAddress(x int) *int {
+	return &x
+}
+
+func takeBoolPointer(value bool) *bool {
+	return &value
+}
 
 // GetCreateFlags registers the flags this driver adds to
 // "docker hosts create"
@@ -116,6 +128,11 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Name:   "vmwarevclouddirector-catalogitem",
 			Usage:  "vCloud Director Catalog Item (default is Ubuntu Precise)",
 			Value:  defaultCatalogItem,
+		},
+		mcnflag.StringFlag{
+			EnvVar: "VCLOUDDIRECTOR_STORPROFILE",
+			Name:   "vmwarevclouddirector-storprofile",
+			Usage:  "vCloud Storage Profile name",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_HREF",
@@ -188,11 +205,12 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.Href = flags.String("vmwarevclouddirector-href")
 	d.Insecure = flags.Bool("vmwarevclouddirector-insecure")
 	d.PublicIP = flags.String("vmwarevclouddirector-publicip")
+	d.StorProfile = flags.String("vmwarevclouddirector-storprofile")
 	d.SetSwarmConfigFromFlags(flags)
 
 	// Check for required Params
-	if d.UserName == "" || d.UserPassword == "" || d.Href == "" || d.VDC == "" || d.Org == "" || d.PublicIP == "" {
-		return fmt.Errorf("Please specify vclouddirector mandatory params using options: -vmwarevclouddirector-username -vmwarevclouddirector-password -vmwarevclouddirector-vdc -vmwarevclouddirector-href -vmwarevclouddirector-org and -vmwarevclouddirector-publicip")
+	if d.UserName == "" || d.UserPassword == "" || d.Href == "" || d.VDC == "" || d.Org == "" || d.StorProfile == "" {
+		return fmt.Errorf("Please specify vclouddirector mandatory params using options: -vmwarevclouddirector-username -vmwarevclouddirector-password -vmwarevclouddirector-vdc -vmwarevclouddirector-href -vmwarevclouddirector-org and -vmwarevclouddirector-storprofile")
 	}
 
 	u, err := url.ParseRequestURI(d.Href)
@@ -244,12 +262,22 @@ func (d *Driver) GetState() (state.State, error) {
 
 	log.Debug("Connecting to vCloud Director to fetch vApp Status...")
 	// Authenticate to vCloud Director
-	_, v, err := p.Authenticate(d.UserName, d.UserPassword, d.Org, d.VDC)
+	err := p.Authenticate(d.UserName, d.UserPassword, d.Org)
 	if err != nil {
 		return state.Error, err
 	}
 
-	vapp, err := v.FindVAppByID(d.VAppID)
+	org, err := p.GetOrgByName(d.Org)
+	if err != nil {
+		return state.Error, err
+	}
+
+	vdc, err := org.GetVDCByName(d.VDC, true)
+	if err != nil {
+		return state.Error, err
+	}
+
+	vapp, err := vdc.GetVAppById(d.VAppID, true)
 	if err != nil {
 		return state.Error, err
 	}
@@ -282,48 +310,59 @@ func (d *Driver) Create() error {
 
 	log.Infof("Connecting to vCloud Director...")
 	// Authenticate to vCloud Director
-	_, v, err := p.Authenticate(d.UserName, d.UserPassword, d.Org, d.VDC)
+	err = p.Authenticate(d.UserName, d.UserPassword, d.Org)
+	if err != nil {
+		return err
+	}
+
+	org, err := p.GetOrgByName(d.Org)
+	if err != nil {
+		return err
+	}
+
+	vdc, err := org.GetVDCByName(d.VDC, true)
 	if err != nil {
 		return err
 	}
 
 	log.Infof("Finding VDC Network...")
 	// Find VDC Network
-	net, err := v.FindVDCNetwork(d.OrgVDCNet)
+	net, err := vdc.FindVDCNetwork(d.OrgVDCNet)
 	if err != nil {
 		return err
 	}
 
-	log.Infof("Finding Edge Gateway...")
-	// Find our Edge Gateway
-	edge, err := v.FindEdgeGateway(d.EdgeGateway)
-	if err != nil {
-		return err
-	}
-
-	log.Infof("Finding Org...")
-	// Get the Org our VDC belongs to
-	org, err := v.GetVDCOrg()
-	if err != nil {
-		return err
-	}
+	// log.Infof("Finding Edge Gateway...")
+	// // Find our Edge Gateway
+	// edgeGatewayList, err := vdc.QueryEdgeGatewayList()
+	// if err != nil {
+	// 	return err
+	// }
+	// for _, edge := range edgeGatewayList {
+	// 	log.Infof(edge.Name)
+	// }
+	// edge, err := vdc.GetEdgeGatewayByName(d.EdgeGateway, true)
+	// if err != nil {
+	// 	return err
+	// }
 
 	log.Infof("Finding Catalog...")
 	// Find our Catalog
-	cat, err := org.FindCatalog(d.Catalog)
+	cat, err := org.GetCatalogByName(d.Catalog, true)
 	if err != nil {
 		return err
 	}
 
 	log.Infof("Finding Catalog Item...")
 	// Find our Catalog Item
-	cati, err := cat.FindCatalogItem(d.CatalogItem)
+	cati, err := cat.GetCatalogItemByName(d.CatalogItem, true)
 	if err != nil {
 		return err
 	}
 
 	// Fetch the vApp Template in the Catalog Item
 	vapptemplate, err := cati.GetVAppTemplate()
+	vapptemplate.VAppTemplate.Children.VM[0].Name = d.MachineName
 	if err != nil {
 		return err
 	}
@@ -331,41 +370,65 @@ func (d *Driver) Create() error {
 	// Create a new empty vApp
 	vapp := govcd.NewVApp(&p.Client)
 
+	var networks []*types.OrgVDCNetwork
+	// Get StorageProfileReference
+	storageProfileRef, err := vdc.FindStorageProfileReference(d.StorProfile)
+	if err != nil {
+		return fmt.Errorf("Error finding storage profile: %s", err)
+	}
+	networks = append(networks, net.OrgVDCNetwork)
+
 	log.Infof("Creating a new vApp: %s...", d.MachineName)
 	// Compose the vApp with ComposeVApp
-	task, err := vapp.ComposeVApp(net, vapptemplate, d.MachineName, "Container Host created with Docker Host")
+	task, err := vdc.ComposeVApp(networks, vapptemplate, storageProfileRef, d.MachineName, "Container Host created with Docker Host", true)
 	if err != nil {
 		return err
 	}
+	
 
 	// Wait for the creation to be completed
 	if err = task.WaitTaskCompletion(); err != nil {
 		return err
 	}
 
-	// CPU Count will work if CPU is modulo of Socket Core count this should be fixes
-	log.Infof("Changing CPU Count...")
-	if d.CPUCount > 1 {
-		task, err = vapp.ChangeCPUcount(d.CPUCount)
-		if err != nil {
-			return err
-		}
-	} else {
-		log.Infof("Not changing CPU Count < 2 because of socket and cpu problem in the api implementation")
-	}
-
-	if err = task.WaitTaskCompletion(); err != nil {
-		return err
-	}
-
-	log.Infof("Changing Memory Size...")
-	task, err = vapp.ChangeMemorySize(d.MemorySize)
+	vapp, err = vdc.GetVAppByName(d.MachineName, true)
 	if err != nil {
 		return err
 	}
-
-	if err = task.WaitTaskCompletion(); err != nil {
+	vm, err := vapp.GetVMByName(d.MachineName, true)
+	if err != nil {
 		return err
+	}
+	// Wait vm is created
+	for {
+		vapp, err = vdc.GetVAppByName(d.MachineName, true)
+		if err != nil {
+			return err
+		}
+		vm, err = vapp.GetVMByName(d.MachineName, true)
+		if err != nil {
+			return err
+		}
+		time.Sleep(2)
+		if vm.VM.VmSpecSection != nil {
+			break
+		}
+	}
+
+	// Set VAppID with ID of the created VApp
+	vmSpecSection := vm.VM.VmSpecSection
+	description := vm.VM.Description
+
+	vmSpecSection.NumCpus = takeIntAddress(d.CPUCount)
+	// has to come together
+	vmSpecSection.NumCoresPerSocket = takeIntAddress(d.CPUCount)
+
+	vmSpecSection.MemoryResourceMb.Configured = int64(d.MemorySize)
+
+	log.Infof("Change VM size...")
+	_, err = vm.UpdateVmSpecSection(vmSpecSection, description)
+	if err != nil {
+		return fmt.Errorf("Error changing size: %s", err)
 	}
 
 	sshCustomScript := "echo \"" + strings.TrimSpace(key) + "\" > /root/.ssh/authorized_keys"
@@ -391,21 +454,21 @@ func (d *Driver) Create() error {
 		return err
 	}
 
-	log.Infof("Creating NAT and Firewall Rules on %s...", d.EdgeGateway)
-	task, err = edge.Create1to1Mapping(vapp.VApp.Children.VM[0].NetworkConnectionSection.NetworkConnection.IPAddress, d.PublicIP, d.MachineName)
-	if err != nil {
-		return err
-	}
+	// log.Infof("Creating NAT and Firewall Rules on %s...", d.EdgeGateway)
+	// task, err = edge.Create1to1Mapping(vapp.VApp.Children.VM[0].NetworkConnectionSection.NetworkConnection[0].IPAddress, d.PublicIP, d.MachineName)
+	// if err != nil {
+	// 	return err
+	// }
 
-	if err = task.WaitTaskCompletion(); err != nil {
-		return err
-	}
+	// if err = task.WaitTaskCompletion(); err != nil {
+	// 	return err
+	// }
 
-	log.Debugf("Disconnecting from vCloud Director...")
+	// log.Debugf("Disconnecting from vCloud Director...")
 
-	if err = p.Disconnect(); err != nil {
-		return err
-	}
+	// if err = p.Disconnect(); err != nil {
+	// 	return err
+	// }
 
 	// Set VAppID with ID of the created VApp
 	d.VAppID = vapp.VApp.ID
@@ -419,18 +482,28 @@ func (d *Driver) Remove() error {
 
 	log.Infof("Connecting to vCloud Director...")
 	// Authenticate to vCloud Director
-	_, v, err := p.Authenticate(d.UserName, d.UserPassword, d.Org, d.VDC)
+	err := p.Authenticate(d.UserName, d.UserPassword, d.Org)
 	if err != nil {
 		return err
 	}
 
-	// Find our Edge Gateway
-	edge, err := v.FindEdgeGateway(d.EdgeGateway)
+	org, err := p.GetOrgByName(d.Org)
 	if err != nil {
 		return err
 	}
 
-	vapp, err := v.FindVAppByID(d.VAppID)
+	vdc, err := org.GetVDCByName(d.VDC, true)
+	if err != nil {
+		return err
+	}
+
+	// // Find our Edge Gateway
+	// edge, err := vdc.FindEdgeGateway(d.EdgeGateway)
+	// if err != nil {
+	// 	return err
+	// }
+
+	vapp, err := vdc.FindVAppByID(d.VAppID)
 	if err != nil {
 		log.Infof("Can't find the vApp, assuming it was deleted already...")
 		return nil
@@ -441,19 +514,19 @@ func (d *Driver) Remove() error {
 		return err
 	}
 
-	log.Infof("Removing NAT and Firewall Rules on %s...", d.EdgeGateway)
-	task, err := edge.Remove1to1Mapping(vapp.VApp.Children.VM[0].NetworkConnectionSection.NetworkConnection.IPAddress, d.PublicIP)
-	if err != nil {
-		return err
-	}
-	if err = task.WaitTaskCompletion(); err != nil {
-		return err
-	}
+	// log.Infof("Removing NAT and Firewall Rules on %s...", d.EdgeGateway)
+	// task, err := edge.Remove1to1Mapping(vapp.VApp.Children.VM[0].NetworkConnectionSection.NetworkConnection[0].IPAddress, d.PublicIP)
+	// if err != nil {
+	// 	return err
+	// }
+	// if err = task.WaitTaskCompletion(); err != nil {
+	// 	return err
+	// }
 
 	if status == "POWERED_ON" {
 		// If it's powered on, power it off before deleting
 		log.Infof("Powering Off %s...", d.MachineName)
-		task, err = vapp.PowerOff()
+		task, err := vapp.PowerOff()
 		if err != nil {
 			return err
 		}
@@ -464,7 +537,7 @@ func (d *Driver) Remove() error {
 	}
 
 	log.Debugf("Undeploying %s...", d.MachineName)
-	task, err = vapp.Undeploy()
+	task, err := vapp.Undeploy()
 	if err != nil {
 		return err
 	}
@@ -481,9 +554,9 @@ func (d *Driver) Remove() error {
 		return err
 	}
 
-	if err = p.Disconnect(); err != nil {
-		return err
-	}
+	// if err = p.Disconnect(); err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
@@ -493,13 +566,23 @@ func (d *Driver) Start() error {
 
 	log.Infof("Connecting to vCloud Director...")
 	// Authenticate to vCloud Director
-	_, v, err := p.Authenticate(d.UserName, d.UserPassword, d.Org, d.VDC)
+	err := p.Authenticate(d.UserName, d.UserPassword, d.Org)
+	if err != nil {
+		return err
+	}
+
+	org, err := p.GetOrgByName(d.Org)
+	if err != nil {
+		return err
+	}
+
+	vdc, err := org.GetVDCByName(d.VDC, true)
 	if err != nil {
 		return err
 	}
 
 	log.Infof("Finding vApp %s", d.VAppID)
-	vapp, err := v.FindVAppByID(d.VAppID)
+	vapp, err := vdc.FindVAppByID(d.VAppID)
 	if err != nil {
 		return err
 	}
@@ -521,9 +604,9 @@ func (d *Driver) Start() error {
 
 	}
 
-	if err = p.Disconnect(); err != nil {
-		return err
-	}
+	// if err = p.Disconnect(); err != nil {
+	// 	return err
+	// }
 
 	d.IPAddress, err = d.GetIP()
 	return err
@@ -534,12 +617,22 @@ func (d *Driver) Stop() error {
 
 	log.Infof("Connecting to vCloud Director...")
 	// Authenticate to vCloud Director
-	_, v, err := p.Authenticate(d.UserName, d.UserPassword, d.Org, d.VDC)
+	err := p.Authenticate(d.UserName, d.UserPassword, d.Org)
 	if err != nil {
 		return err
 	}
 
-	vapp, err := v.FindVAppByID(d.VAppID)
+	org, err := p.GetOrgByName(d.Org)
+	if err != nil {
+		return err
+	}
+
+	vdc, err := org.GetVDCByName(d.VDC, true)
+	if err != nil {
+		return err
+	}
+
+	vapp, err := vdc.FindVAppByID(d.VAppID)
 	if err != nil {
 		return err
 	}
@@ -552,9 +645,9 @@ func (d *Driver) Stop() error {
 		return err
 	}
 
-	if err = p.Disconnect(); err != nil {
-		return err
-	}
+	// if err = p.Disconnect(); err != nil {
+	// 	return err
+	// }
 
 	d.IPAddress = ""
 
@@ -566,12 +659,22 @@ func (d *Driver) Restart() error {
 
 	log.Infof("Connecting to vCloud Director...")
 	// Authenticate to vCloud Director
-	_, v, err := p.Authenticate(d.UserName, d.UserPassword, d.Org, d.VDC)
+	err := p.Authenticate(d.UserName, d.UserPassword, d.Org)
 	if err != nil {
 		return err
 	}
 
-	vapp, err := v.FindVAppByID(d.VAppID)
+	org, err := p.GetOrgByName(d.Org)
+	if err != nil {
+		return err
+	}
+
+	vdc, err := org.GetVDCByName(d.VDC, true)
+	if err != nil {
+		return err
+	}
+
+	vapp, err := vdc.FindVAppByID(d.VAppID)
 	if err != nil {
 		return err
 	}
@@ -597,12 +700,22 @@ func (d *Driver) Kill() error {
 
 	log.Infof("Connecting to vCloud Director...")
 	// Authenticate to vCloud Director
-	_, v, err := p.Authenticate(d.UserName, d.UserPassword, d.Org, d.VDC)
+	err := p.Authenticate(d.UserName, d.UserPassword, d.Org)
 	if err != nil {
 		return err
 	}
 
-	vapp, err := v.FindVAppByID(d.VAppID)
+	org, err := p.GetOrgByName(d.Org)
+	if err != nil {
+		return err
+	}
+
+	vdc, err := org.GetVDCByName(d.VDC, true)
+	if err != nil {
+		return err
+	}
+
+	vapp, err := vdc.FindVAppByID(d.VAppID)
 	if err != nil {
 		return err
 	}
