@@ -19,7 +19,7 @@ package main
 
 import (
 	"github.com/docker/machine/libmachine/drivers/plugin"
-	"github.com/jxoir/docker-machine-driver-vcloud-director/vmwarevcloud"
+	"github.com/negashev/docker-machine-driver-vcloud-director/vmwarevcloud"
 )
 
 func main() {
