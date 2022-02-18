@@ -13,8 +13,8 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            artifact_name: docker-machine-driver-vcloud-director
-            asset_name: docker-machine-driver-vcloud-director-linux-amd64
+            artifact_name: docker-machine-driver-vcloud-director-linux-amd64.tgz
+            asset_name: docker-machine-driver-vcloud-director-linux-amd64.tgz
           - os: windows-latest
             artifact_name: docker-machine-driver-vcloud-director.exe
             asset_name: docker-machine-driver-vcloud-director-windows-amd64
@@ -26,6 +26,9 @@ jobs:
     - uses: actions/checkout@v2
     - name: Build
       run: go build
+    - name: Create tar.gz
+      if: matrix.os == 'ubuntu-latest'
+      run: tar -czvf docker-machine-driver-vcloud-director-linux-amd64.tgz docker-machine-driver-vcloud-director
     - name: Upload binaries to release
       uses: svenstaro/upload-release-action@v2
       with:
