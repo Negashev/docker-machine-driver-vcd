@@ -52,6 +52,7 @@ type Driver struct {
 	Catalog        string
 	CatalogItem    string
 	StorProfile    string
+	UserData       string
 	DockerPort     int
 	CPUCount       int
 	MemorySize     int
@@ -72,6 +73,7 @@ const (
 	defaultSSHPort     = 22
 	defaultDockerPort  = 2376
 	defaultInsecure    = false
+	defaultSSHUser     = "docker"
 )
 
 func takeIntAddress(x int) *int {
@@ -183,6 +185,18 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "vCloud Director Docker port",
 			Value:  defaultDockerPort,
 		},
+		mcnflag.StringFlag{
+			EnvVar: "VCLOUDDIRECTOR_SSH_USER",
+			Name:   "vcloud-director-ssh-user",
+			Usage:  "vCloud Director SSH user",
+			Value:  defaultSSHUser,
+		},
+		mcnflag.StringFlag{
+			EnvVar: "VCLOUDDIRECTOR_USER_DATA",
+			Name:   "vcloud-director-user-data",
+			Usage:  "Cloud-init based User data",
+			Value:  "",
+		},
 	}
 }
 
@@ -222,6 +236,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.Insecure = flags.Bool("vcloud-director-insecure")
 	d.PublicIP = flags.String("vcloud-director-publicip")
 	d.StorProfile = flags.String("vcloud-director-storprofile")
+	d.UserData = flags.String("vcloud-director-user-data")
 	d.SetSwarmConfigFromFlags(flags)
 
 	// Check for required Params
@@ -259,7 +274,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.CatalogItem = flags.String("vcloud-director-catalogitem")
 
 	d.DockerPort = flags.Int("vcloud-director-docker-port")
-	d.SSHUser = "docker"
+	d.SSHUser = flags.String("vcloud-director-ssh-user")
 	d.SSHPort = flags.Int("vcloud-director-ssh-port")
 	d.CPUCount = flags.Int("vcloud-director-cpu-count")
 	d.MemorySize = flags.Int("vcloud-director-memory-size")
@@ -459,7 +474,9 @@ func (d *Driver) Create() error {
 	}
 
 	// fix resolv
-	GuestCustomizationSection.CustomizationScript += "\nsed -i_bak \"s/\\(nameserver\\) .*/\\1 1.1.1.1/\" /etc/resolv.conf"
+	GuestCustomizationSection.CustomizationScript += "\nsed -i_bak \"s/\\(nameserver\\) .*/\\1 1.1.1.1/\" /etc/resolv.conf\n\n"
+
+	GuestCustomizationSection.CustomizationScript += d.UserData
 	
 	_, err = vm.SetGuestCustomizationSection(GuestCustomizationSection)
 	if err != nil {
