@@ -15,7 +15,7 @@
 *
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ */
 
 package vmwarevcloud
 
@@ -41,23 +41,25 @@ import (
 
 type Driver struct {
 	*drivers.BaseDriver
-	UserName     string
-	UserPassword string
-	VDC          string
-	OrgVDCNet    string
-	EdgeGateway  string
-	PublicIP     string
-	Catalog      string
-	CatalogItem  string
-	StorProfile  string
-	DockerPort   int
-	CPUCount     int
-	MemorySize   int
-	VAppID       string
-	Href         string
-	Url          *url.URL
-	Org          string
-	Insecure     bool
+	UserName       string
+	UserPassword   string
+	VDC            string
+	OrgVDCNet      string
+	EdgeGateway    string
+	VdcEdgeGateway string
+	PublicIP       string
+	PrivateIP      string
+	Catalog        string
+	CatalogItem    string
+	StorProfile    string
+	DockerPort     int
+	CPUCount       int
+	MemorySize     int
+	VAppID         string
+	Href           string
+	Url            *url.URL
+	Org            string
+	Insecure       bool
 }
 
 const (
@@ -96,6 +98,11 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			EnvVar: "VCLOUDDIRECTOR_VDC",
 			Name:   "vmwarevclouddirector-vdc",
 			Usage:  "vCloud Director Virtual Data Center",
+		},
+		mcnflag.StringFlag{
+			EnvVar: "VCLOUDDIRECTOR_VDCEDGEGATEWAY",
+			Name:   "vmwarevclouddirector-vdcedgegateway",
+			Usage:  "vCloud Director Virtual Data Center Edge Gateway",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_ORG",
@@ -227,20 +234,27 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	}
 
 	// If the Edge Gateway is empty, just set it to the default edge gateway.
-	if flags.String("vmwarevclouddirector-edgegateway") == "" {
-		d.EdgeGateway = flags.String("vmwarevclouddirector-org")
+	// if flags.String("vmwarevclouddirector-edgegateway") == "" {
+	// 	d.EdgeGateway = flags.String("vmwarevclouddirector-org")
+	// } else {
+	d.EdgeGateway = flags.String("vmwarevclouddirector-edgegateway")
+	// }
+
+	if flags.String("vmwarevclouddirector-vdcedgegateway") == "" {
+		d.VdcEdgeGateway = flags.String("vmwarevclouddirector-vdc")
 	} else {
-		d.EdgeGateway = flags.String("vmwarevclouddirector-edgegateway")
+		d.VdcEdgeGateway = flags.String("vmwarevclouddirector-vdcedgegateway")
 	}
 
 	d.Catalog = flags.String("vmwarevclouddirector-catalog")
 	d.CatalogItem = flags.String("vmwarevclouddirector-catalogitem")
 
 	d.DockerPort = flags.Int("vmwarevclouddirector-docker-port")
-	d.SSHUser = "root"
+	d.SSHUser = "docker"
 	d.SSHPort = flags.Int("vmwarevclouddirector-ssh-port")
 	d.CPUCount = flags.Int("vmwarevclouddirector-cpu-count")
 	d.MemorySize = flags.Int("vmwarevclouddirector-memory-size")
+	d.PrivateIP = d.PublicIP
 
 	return nil
 }
@@ -250,10 +264,13 @@ func (d *Driver) GetURL() (string, error) {
 		return "", err
 	}
 
-	return fmt.Sprintf("tcp://%s", net.JoinHostPort(d.PublicIP, strconv.Itoa(d.DockerPort))), nil
+	return fmt.Sprintf("tcp://%s", net.JoinHostPort(d.PrivateIP, strconv.Itoa(d.DockerPort))), nil
 }
 
 func (d *Driver) GetIP() (string, error) {
+	if d.PublicIP == "" {
+		return d.PrivateIP, nil
+	}
 	return d.PublicIP, nil
 }
 
@@ -287,9 +304,9 @@ func (d *Driver) GetState() (state.State, error) {
 		return state.Error, err
 	}
 
-	if err = p.Disconnect(); err != nil {
-		return state.Error, err
-	}
+	// if err = p.Disconnect(); err != nil {
+	// 	return state.Error, err
+	// }
 
 	switch status {
 	case "POWERED_ON":
@@ -332,20 +349,6 @@ func (d *Driver) Create() error {
 		return err
 	}
 
-	// log.Infof("Finding Edge Gateway...")
-	// // Find our Edge Gateway
-	// edgeGatewayList, err := vdc.QueryEdgeGatewayList()
-	// if err != nil {
-	// 	return err
-	// }
-	// for _, edge := range edgeGatewayList {
-	// 	log.Infof(edge.Name)
-	// }
-	// edge, err := vdc.GetEdgeGatewayByName(d.EdgeGateway, true)
-	// if err != nil {
-	// 	return err
-	// }
-
 	log.Infof("Finding Catalog...")
 	// Find our Catalog
 	cat, err := org.GetCatalogByName(d.Catalog, true)
@@ -384,7 +387,6 @@ func (d *Driver) Create() error {
 	if err != nil {
 		return err
 	}
-	
 
 	// Wait for the creation to be completed
 	if err = task.WaitTaskCompletion(); err != nil {
@@ -409,7 +411,7 @@ func (d *Driver) Create() error {
 		if err != nil {
 			return err
 		}
-		time.Sleep(2)
+		time.Sleep(2 * time.Second)
 		if vm.VM.VmSpecSection != nil {
 			break
 		}
@@ -431,15 +433,15 @@ func (d *Driver) Create() error {
 		return fmt.Errorf("Error changing size: %s", err)
 	}
 
-	sshCustomScript := "echo \"" + strings.TrimSpace(key) + "\" > /root/.ssh/authorized_keys"
-
 	log.Infof("Running customization script (SSH)...")
-	task, err = vapp.RunCustomizationScript(d.MachineName, sshCustomScript)
-	if err != nil {
-		return err
-	}
+	GuestCustomizationSection := vm.VM.GuestCustomizationSection
 
-	if err = task.WaitTaskCompletion(); err != nil {
+	GuestCustomizationSection.AdminPasswordEnabled = takeBoolPointer(false)
+
+	GuestCustomizationSection.CustomizationScript = "useradd -m -d /home/docker -s /bin/bash docker\nmkdir -p /home/docker/.ssh\nchown -R docker:docker /home/docker/.ssh\nchmod 700 /home/docker/.ssh\nchmod 600 /home/docker/.ssh/authorized_keys\nusermod -a -G sudo docker\necho \"" + strings.TrimSpace(key) + "\" > /home/docker/.ssh/authorized_keys\npasswd -d docker\nsed -i_bak \"s/\\(nameserver\\) .*/\\1 1.1.1.1/\" /etc/resolv.conf"
+
+	_, err = vm.SetGuestCustomizationSection(GuestCustomizationSection)
+	if err != nil {
 		return err
 	}
 
@@ -454,15 +456,39 @@ func (d *Driver) Create() error {
 		return err
 	}
 
-	// log.Infof("Creating NAT and Firewall Rules on %s...", d.EdgeGateway)
-	// task, err = edge.Create1to1Mapping(vapp.VApp.Children.VM[0].NetworkConnectionSection.NetworkConnection[0].IPAddress, d.PublicIP, d.MachineName)
-	// if err != nil {
-	// 	return err
-	// }
+	for {
+		vm, err = vapp.GetVMByName(d.MachineName, true)
+		if err != nil {
+			return err
+		}
+		time.Sleep(2 * time.Second)
+		if vm.VM.NetworkConnectionSection.NetworkConnection[0].IPAddress != "" {
+			d.PrivateIP = vm.VM.NetworkConnectionSection.NetworkConnection[0].IPAddress
+			break
+		}
+	}
 
-	// if err = task.WaitTaskCompletion(); err != nil {
-	// 	return err
-	// }
+	if d.EdgeGateway != "" && d.PublicIP != "" {
+
+		vdcGateway, err := org.GetVDCByName(d.VdcEdgeGateway, true)
+		if err != nil {
+			return err
+		}
+		edge, err := vdcGateway.GetEdgeGatewayByName(d.EdgeGateway, true)
+		if err != nil {
+			return err
+		}
+
+		log.Infof("Creating NAT and Firewall Rules on %s...", d.EdgeGateway)
+		task, err = edge.Create1to1Mapping(vm.VM.NetworkConnectionSection.NetworkConnection[0].IPAddress, d.PublicIP, d.MachineName)
+		if err != nil {
+			return err
+		}
+
+		if err = task.WaitTaskCompletion(); err != nil {
+			return err
+		}
+	}
 
 	// log.Debugf("Disconnecting from vCloud Director...")
 
@@ -497,12 +523,6 @@ func (d *Driver) Remove() error {
 		return err
 	}
 
-	// // Find our Edge Gateway
-	// edge, err := vdc.FindEdgeGateway(d.EdgeGateway)
-	// if err != nil {
-	// 	return err
-	// }
-
 	vapp, err := vdc.FindVAppByID(d.VAppID)
 	if err != nil {
 		log.Infof("Can't find the vApp, assuming it was deleted already...")
@@ -514,14 +534,26 @@ func (d *Driver) Remove() error {
 		return err
 	}
 
-	// log.Infof("Removing NAT and Firewall Rules on %s...", d.EdgeGateway)
-	// task, err := edge.Remove1to1Mapping(vapp.VApp.Children.VM[0].NetworkConnectionSection.NetworkConnection[0].IPAddress, d.PublicIP)
-	// if err != nil {
-	// 	return err
-	// }
-	// if err = task.WaitTaskCompletion(); err != nil {
-	// 	return err
-	// }
+	if d.EdgeGateway != "" && d.PublicIP != "" {
+
+		vdcGateway, err := org.GetVDCByName(d.VdcEdgeGateway, true)
+		if err != nil {
+			return err
+		}
+		edge, err := vdcGateway.GetEdgeGatewayByName(d.EdgeGateway, true)
+		if err != nil {
+			return err
+		}
+
+		log.Infof("Removing NAT and Firewall Rules on %s...", d.EdgeGateway)
+		task, err := edge.Remove1to1Mapping(vapp.VApp.Children.VM[0].NetworkConnectionSection.NetworkConnection[0].IPAddress, d.PublicIP)
+		if err != nil {
+			return err
+		}
+		if err = task.WaitTaskCompletion(); err != nil {
+			return err
+		}
+	}
 
 	if status == "POWERED_ON" {
 		// If it's powered on, power it off before deleting
@@ -687,9 +719,9 @@ func (d *Driver) Restart() error {
 		return err
 	}
 
-	if err = p.Disconnect(); err != nil {
-		return err
-	}
+	// if err = p.Disconnect(); err != nil {
+	// 	return err
+	// }
 
 	d.IPAddress, err = d.GetIP()
 	return err
@@ -728,9 +760,9 @@ func (d *Driver) Kill() error {
 		return err
 	}
 
-	if err = p.Disconnect(); err != nil {
-		return err
-	}
+	// if err = p.Disconnect(); err != nil {
+	// 	return err
+	// }
 
 	d.IPAddress = ""
 
