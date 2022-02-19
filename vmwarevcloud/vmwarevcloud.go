@@ -55,6 +55,7 @@ type Driver struct {
 	DockerPort     int
 	CPUCount       int
 	MemorySize     int
+	DiskSize       int
 	VAppID         string
 	Href           string
 	Url            *url.URL
@@ -67,6 +68,7 @@ const (
 	defaultCatalogItem = "Ubuntu Server 12.04 LTS (amd64 20150127)"
 	defaultCpus        = 2
 	defaultMemory      = 2048
+	defaultDisk        = 20480
 	defaultSSHPort     = 22
 	defaultDockerPort  = 2376
 	defaultInsecure    = false
@@ -86,92 +88,98 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 	return []mcnflag.Flag{
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_USERNAME",
-			Name:   "vmwarevclouddirector-username",
+			Name:   "vcloud-director-username",
 			Usage:  "vCloud Director username",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_PASSWORD",
-			Name:   "vmwarevclouddirector-password",
+			Name:   "vcloud-director-password",
 			Usage:  "vCloud Director password",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_VDC",
-			Name:   "vmwarevclouddirector-vdc",
+			Name:   "vcloud-director-vdc",
 			Usage:  "vCloud Director Virtual Data Center",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_VDCEDGEGATEWAY",
-			Name:   "vmwarevclouddirector-vdcedgegateway",
+			Name:   "vcloud-director-vdcedgegateway",
 			Usage:  "vCloud Director Virtual Data Center Edge Gateway",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_ORG",
-			Name:   "vmwarevclouddirector-org",
+			Name:   "vcloud-director-org",
 			Usage:  "vCloud Director Organization",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_ORGVDCNETWORK",
-			Name:   "vmwarevclouddirector-orgvdcnetwork",
+			Name:   "vcloud-director-orgvdcnetwork",
 			Usage:  "vCloud Direcotr Org VDC Network",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_EDGEGATEWAY",
-			Name:   "vmwarevclouddirector-edgegateway",
+			Name:   "vcloud-director-edgegateway",
 			Usage:  "vCloud Director Edge Gateway (Default is <vdc>)",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_PUBLICIP",
-			Name:   "vmwarevclouddirector-publicip",
+			Name:   "vcloud-director-publicip",
 			Usage:  "vCloud Director Org Public IP to use",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_CATALOG",
-			Name:   "vmwarevclouddirector-catalog",
+			Name:   "vcloud-director-catalog",
 			Usage:  "vCloud Director Catalog (default is Public Catalog)",
 			Value:  defaultCatalog,
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_CATALOGITEM",
-			Name:   "vmwarevclouddirector-catalogitem",
+			Name:   "vcloud-director-catalogitem",
 			Usage:  "vCloud Director Catalog Item (default is Ubuntu Precise)",
 			Value:  defaultCatalogItem,
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_STORPROFILE",
-			Name:   "vmwarevclouddirector-storprofile",
+			Name:   "vcloud-director-storprofile",
 			Usage:  "vCloud Storage Profile name",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_HREF",
-			Name:   "vmwarevclouddirector-href",
+			Name:   "vcloud-director-href",
 			Usage:  "vCloud Director API Endpoint",
 		},
 		mcnflag.BoolFlag{
 			EnvVar: "VCLOUDDIRECTOR_INSECURE",
-			Name:   "vmwarevclouddirector-insecure",
+			Name:   "vcloud-director-insecure",
 			Usage:  "vCloud Director allow non secure connections",
 		},
 		mcnflag.IntFlag{
 			EnvVar: "VCLOUDDIRECTOR_CPU_COUNT",
-			Name:   "vmwarevclouddirector-cpu-count",
+			Name:   "vcloud-director-cpu-count",
 			Usage:  "vCloud Director VM Cpu Count (default 1)",
 			Value:  defaultCpus,
 		},
 		mcnflag.IntFlag{
 			EnvVar: "VCLOUDDIRECTOR_MEMORY_SIZE",
-			Name:   "vmwarevclouddirector-memory-size",
+			Name:   "vcloud-director-memory-size",
 			Usage:  "vCloud Director VM Memory Size in MB (default 2048)",
 			Value:  defaultMemory,
 		},
 		mcnflag.IntFlag{
+			EnvVar: "VCLOUDDIRECTOR_DISK_SIZE",
+			Name:   "vcloud-director-disk-size",
+			Usage:  "vCloud Director VM Disk Size in MB (default 20480)",
+			Value:  defaultDisk,
+		},
+		mcnflag.IntFlag{
 			EnvVar: "VCLOUDDIRECTOR_SSH_PORT",
-			Name:   "vmwarevclouddirector-ssh-port",
+			Name:   "vcloud-director-ssh-port",
 			Usage:  "vCloud Director SSH port",
 			Value:  defaultSSHPort,
 		},
 		mcnflag.IntFlag{
 			EnvVar: "VCLOUDDIRECTOR_DOCKER_PORT",
-			Name:   "vmwarevclouddirector-docker-port",
+			Name:   "vcloud-director-docker-port",
 			Usage:  "vCloud Director Docker port",
 			Value:  defaultDockerPort,
 		},
@@ -184,6 +192,7 @@ func NewDriver(hostName, storePath string) drivers.Driver {
 		CatalogItem: defaultCatalogItem,
 		CPUCount:    defaultCpus,
 		MemorySize:  defaultMemory,
+		DiskSize:    defaultDisk,
 		DockerPort:  defaultDockerPort,
 		Insecure:    defaultInsecure,
 		BaseDriver: &drivers.BaseDriver{
@@ -205,19 +214,19 @@ func (d *Driver) DriverName() string {
 
 func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 
-	d.UserName = flags.String("vmwarevclouddirector-username")
-	d.UserPassword = flags.String("vmwarevclouddirector-password")
-	d.VDC = flags.String("vmwarevclouddirector-vdc")
-	d.Org = flags.String("vmwarevclouddirector-org")
-	d.Href = flags.String("vmwarevclouddirector-href")
-	d.Insecure = flags.Bool("vmwarevclouddirector-insecure")
-	d.PublicIP = flags.String("vmwarevclouddirector-publicip")
-	d.StorProfile = flags.String("vmwarevclouddirector-storprofile")
+	d.UserName = flags.String("vcloud-director-username")
+	d.UserPassword = flags.String("vcloud-director-password")
+	d.VDC = flags.String("vcloud-director-vdc")
+	d.Org = flags.String("vcloud-director-org")
+	d.Href = flags.String("vcloud-director-href")
+	d.Insecure = flags.Bool("vcloud-director-insecure")
+	d.PublicIP = flags.String("vcloud-director-publicip")
+	d.StorProfile = flags.String("vcloud-director-storprofile")
 	d.SetSwarmConfigFromFlags(flags)
 
 	// Check for required Params
 	if d.UserName == "" || d.UserPassword == "" || d.Href == "" || d.VDC == "" || d.Org == "" || d.StorProfile == "" {
-		return fmt.Errorf("Please specify vclouddirector mandatory params using options: -vmwarevclouddirector-username -vmwarevclouddirector-password -vmwarevclouddirector-vdc -vmwarevclouddirector-href -vmwarevclouddirector-org and -vmwarevclouddirector-storprofile")
+		return fmt.Errorf("Please specify vclouddirector mandatory params using options: -vcloud-director-username -vcloud-director-password -vcloud-director-vdc -vcloud-director-href -vcloud-director-org and -vcloud-director-storprofile")
 	}
 
 	u, err := url.ParseRequestURI(d.Href)
@@ -227,33 +236,34 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.Url = u
 
 	// If the Org VDC Network is empty, set it to the default routed network.
-	if flags.String("vmwarevclouddirector-orgvdcnetwork") == "" {
-		d.OrgVDCNet = flags.String("vmwarevclouddirector-vdc") + "-default-routed"
+	if flags.String("vcloud-director-orgvdcnetwork") == "" {
+		d.OrgVDCNet = flags.String("vcloud-director-vdc") + "-default-routed"
 	} else {
-		d.OrgVDCNet = flags.String("vmwarevclouddirector-orgvdcnetwork")
+		d.OrgVDCNet = flags.String("vcloud-director-orgvdcnetwork")
 	}
 
 	// If the Edge Gateway is empty, just set it to the default edge gateway.
-	// if flags.String("vmwarevclouddirector-edgegateway") == "" {
-	// 	d.EdgeGateway = flags.String("vmwarevclouddirector-org")
+	// if flags.String("vcloud-director-edgegateway") == "" {
+	// 	d.EdgeGateway = flags.String("vcloud-director-org")
 	// } else {
-	d.EdgeGateway = flags.String("vmwarevclouddirector-edgegateway")
+	d.EdgeGateway = flags.String("vcloud-director-edgegateway")
 	// }
 
-	if flags.String("vmwarevclouddirector-vdcedgegateway") == "" {
-		d.VdcEdgeGateway = flags.String("vmwarevclouddirector-vdc")
+	if flags.String("vcloud-director-vdcedgegateway") == "" {
+		d.VdcEdgeGateway = flags.String("vcloud-director-vdc")
 	} else {
-		d.VdcEdgeGateway = flags.String("vmwarevclouddirector-vdcedgegateway")
+		d.VdcEdgeGateway = flags.String("vcloud-director-vdcedgegateway")
 	}
 
-	d.Catalog = flags.String("vmwarevclouddirector-catalog")
-	d.CatalogItem = flags.String("vmwarevclouddirector-catalogitem")
+	d.Catalog = flags.String("vcloud-director-catalog")
+	d.CatalogItem = flags.String("vcloud-director-catalogitem")
 
-	d.DockerPort = flags.Int("vmwarevclouddirector-docker-port")
+	d.DockerPort = flags.Int("vcloud-director-docker-port")
 	d.SSHUser = "docker"
-	d.SSHPort = flags.Int("vmwarevclouddirector-ssh-port")
-	d.CPUCount = flags.Int("vmwarevclouddirector-cpu-count")
-	d.MemorySize = flags.Int("vmwarevclouddirector-memory-size")
+	d.SSHPort = flags.Int("vcloud-director-ssh-port")
+	d.CPUCount = flags.Int("vcloud-director-cpu-count")
+	d.MemorySize = flags.Int("vcloud-director-memory-size")
+	d.DiskSize = flags.Int("vcloud-director-disk-size")
 	d.PrivateIP = d.PublicIP
 
 	return nil
@@ -427,6 +437,8 @@ func (d *Driver) Create() error {
 
 	vmSpecSection.MemoryResourceMb.Configured = int64(d.MemorySize)
 
+	vmSpecSection.DiskSection.DiskSettings[0].SizeMb = int64(d.DiskSize)
+
 	log.Infof("Change VM size...")
 	_, err = vm.UpdateVmSpecSection(vmSpecSection, description)
 	if err != nil {
@@ -438,8 +450,17 @@ func (d *Driver) Create() error {
 
 	GuestCustomizationSection.AdminPasswordEnabled = takeBoolPointer(false)
 
-	GuestCustomizationSection.CustomizationScript = "useradd -m -d /home/" + d.SSHUser + " -s /bin/bash " + d.SSHUser + "\nmkdir -p /home/" + d.SSHUser + "/.ssh\nchown -R " + d.SSHUser + ":" + d.SSHUser + " /home/" + d.SSHUser + "/.ssh\nchmod 700 /home/" + d.SSHUser + "/.ssh\nchmod 600 /home/" + d.SSHUser + "/.ssh/authorized_keys\nusermod -a -G sudo " + d.SSHUser + "\necho \"" + strings.TrimSpace(key) + "\" > /home/" + d.SSHUser + "/.ssh/authorized_keys\npasswd -d " + d.SSHUser + "\nsed -i_bak \"s/\\(nameserver\\) .*/\\1 1.1.1.1/\" /etc/resolv.conf"
+	// add user
+	GuestCustomizationSection.CustomizationScript = "useradd -m -d /home/" + d.SSHUser + " -s /bin/bash " + d.SSHUser + "\nmkdir -p /home/" + d.SSHUser + "/.ssh\nchown -R " + d.SSHUser + ":" + d.SSHUser + " /home/" + d.SSHUser + "/.ssh\nchmod 700 /home/" + d.SSHUser + "/.ssh\nchmod 600 /home/" + d.SSHUser + "/.ssh/authorized_keys\nusermod -a -G sudo " + d.SSHUser + "\necho \"" + strings.TrimSpace(key) + "\" > /home/" + d.SSHUser + "/.ssh/authorized_keys\npasswd -d " + d.SSHUser + "\nswapoff -a\nrm -rf /swap.img\n"
 
+	// resize rootFS for ubuntu
+	if strings.HasPrefix(d.CatalogItem, "ubuntu") {
+		GuestCustomizationSection.CustomizationScript += "\ngrowpart /dev/sda 3\npvresize /dev/sda3\nlvextend -l 100%VG /dev/mapper/ubuntu--vg-ubuntu--lv\nresize2fs /dev/mapper/ubuntu--vg-ubuntu--lv\n"
+	}
+
+	// fix resolv
+	GuestCustomizationSection.CustomizationScript += "\nsed -i_bak \"s/\\(nameserver\\) .*/\\1 1.1.1.1/\" /etc/resolv.conf"
+	
 	_, err = vm.SetGuestCustomizationSection(GuestCustomizationSection)
 	if err != nil {
 		return err
