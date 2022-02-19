@@ -438,7 +438,7 @@ func (d *Driver) Create() error {
 
 	GuestCustomizationSection.AdminPasswordEnabled = takeBoolPointer(false)
 
-	GuestCustomizationSection.CustomizationScript = "useradd -m -d /home/" + d.SSHUser + " -s /bin/bash " + d.SSHUser + "\nmkdir -p /home/ + d.SSHUser + /.ssh\nchown -R " + d.SSHUser + ":" + d.SSHUser + " /home/" + d.SSHUser + "/.ssh\nchmod 700 /home/" + d.SSHUser + "/.ssh\nchmod 600 /home/" + d.SSHUser + "/.ssh/authorized_keys\nusermod -a -G sudo " + d.SSHUser + "\necho \"" + strings.TrimSpace(key) + "\" > /home/" + d.SSHUser + "/.ssh/authorized_keys\npasswd -d " + d.SSHUser + "\nsed -i_bak \"s/\\(nameserver\\) .*/\\1 1.1.1.1/\" /etc/resolv.conf"
+	GuestCustomizationSection.CustomizationScript = "useradd -m -d /home/" + d.SSHUser + " -s /bin/bash " + d.SSHUser + "\nmkdir -p /home/" + d.SSHUser + "/.ssh\nchown -R " + d.SSHUser + ":" + d.SSHUser + " /home/" + d.SSHUser + "/.ssh\nchmod 700 /home/" + d.SSHUser + "/.ssh\nchmod 600 /home/" + d.SSHUser + "/.ssh/authorized_keys\nusermod -a -G sudo " + d.SSHUser + "\necho \"" + strings.TrimSpace(key) + "\" > /home/" + d.SSHUser + "/.ssh/authorized_keys\npasswd -d " + d.SSHUser + "\nsed -i_bak \"s/\\(nameserver\\) .*/\\1 1.1.1.1/\" /etc/resolv.conf"
 
 	_, err = vm.SetGuestCustomizationSection(GuestCustomizationSection)
 	if err != nil {
