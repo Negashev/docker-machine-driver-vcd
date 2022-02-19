@@ -1,14 +1,24 @@
-vCloud Director driver for docker-machine based on vcloudair driver @ https://github.com/docker/machine/blob/master/drivers/vmwarevcloudair
+vCloud Director driver for docker-machine
 
 Mandatory parameters:
 
-vmwarevclouddirector-username
-vmwarevclouddirector-password
-vmwarevclouddirector-vdc: vcd tenant
-vmwarevclouddirector-org: vcd tenant organization
-vmwarevclouddirector-href: vcd api endpoint (don't forget to includ /api without trailing slash!) ex.: https://vdc.host/api 
-vmwarevclouddirector-publicip: external public ip to attach gateway 
-vmwarevclouddirector-orgvdcnetwork: vdc network to find gateway
-vmwarevclouddirector-catalog
-vmwarevclouddirector-catalogitem
-vmwarevclouddirector-insecure: bool whether to allow insecure connections to vCloud API
+vcloud-director-username
+vcloud-director-password
+vcloud-director-vdc vcd tenant
+vcloud-director-vdcedgegateway vcd tenant for edge gateway
+vcloud-director-org vcd tenant organization
+vcloud-director-orgvdcnetwork vdc network to find gateway
+vcloud-director-edgegateway edge gateway name for publicIP
+vcloud-director-publicip public ip to attach gateway
+vcloud-director-catalog
+vcloud-director-catalogitem
+vcloud-director-storprofile
+vcloud-director-href vcd api endpoint (don't forget to includ /api without trailing slash!) ex.: https://vdc.host/api
+vcloud-director-insecure bool whether to allow insecure connections to vCloud API
+vcloud-director-cpu-count
+vcloud-director-memory-size
+vcloud-director-disk-size
+vcloud-director-ssh-port
+vcloud-director-docker-port
+vcloud-director-ssh-user
+vcloud-director-user-data bash script
