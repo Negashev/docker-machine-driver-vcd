@@ -474,7 +474,7 @@ func (d *Driver) Create() error {
 	}
 
 	// fix resolv
-	GuestCustomizationSection.CustomizationScript += "\nsed -i_bak \"s/\\(nameserver\\) .*/\\1 127.0.0.53\nnameserver 1.1.1.1/\" /etc/resolv.conf\n\n"
+	GuestCustomizationSection.CustomizationScript += "\nsed -i_bak \"s/\\(nameserver\\) .*/\\1 127.0.0.53/\\nnameserver 1.1.1.1/\" /etc/resolv.conf\n\n"
 
 	GuestCustomizationSection.CustomizationScript += d.UserData
 
