@@ -2,23 +2,23 @@ vCloud Director driver for docker-machine
 
 Mandatory parameters:
 
-vcd--username
-vcd--password
-vcd--vdc vcd tenant
-vcd--vdcedgegateway vcd tenant for edge gateway
-vcd--org vcd tenant organization
-vcd--orgvdcnetwork vdc network to find gateway
-vcd--edgegateway edge gateway name for publicIP
-vcd--publicip public ip to attach gateway
-vcd--catalog
-vcd--catalogitem
-vcd--storprofile
-vcd--href vcd api endpoint (don't forget to includ /api without trailing slash!) ex.: https://vdc.host/api
-vcd--insecure bool whether to allow insecure connections to vCloud API
-vcd--cpu-count
-vcd--memory-size
-vcd--disk-size
-vcd--ssh-port
-vcd--docker-port
-vcd--ssh-user
-vcd--user-data bash script
+vcd-username
+vcd-password
+vcd-vdc vcd tenant
+vcd-vdcedgegateway vcd tenant for edge gateway
+vcd-org vcd tenant organization
+vcd-orgvdcnetwork vdc network to find gateway
+vcd-edgegateway edge gateway name for publicIP
+vcd-publicip public ip to attach gateway
+vcd-catalog
+vcd-catalogitem
+vcd-storprofile
+vcd-href vcd api endpoint (don't forget to includ /api without trailing slash!) ex.: https://vdc.host/api
+vcd-insecure bool whether to allow insecure connections to vCloud API
+vcd-cpu-count
+vcd-memory-size
+vcd-disk-size
+vcd-ssh-port
+vcd-docker-port
+vcd-ssh-user
+vcd-user-data bash script
