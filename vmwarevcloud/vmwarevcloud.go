@@ -1,5 +1,5 @@
 /*
-* docker-machine-driver-vcloud-director
+* docker-machine-driver-vcd
 * Copyright (C) 2017  Juan Manuel Irigaray
 * Copyright (C) 2022  Aleksandr Negashev (i@negash.ru)
 *
@@ -477,7 +477,7 @@ func (d *Driver) Create() error {
 	GuestCustomizationSection.CustomizationScript += "\nsed -i_bak \"s/\\(nameserver\\) .*/\\1 1.1.1.1/\" /etc/resolv.conf\n\n"
 
 	GuestCustomizationSection.CustomizationScript += d.UserData
-	
+
 	_, err = vm.SetGuestCustomizationSection(GuestCustomizationSection)
 	if err != nil {
 		return err

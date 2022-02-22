@@ -1,4 +1,4 @@
-module github.com/negashev/docker-machine-driver-vcloud-director
+module github.com/negashev/docker-machine-driver-vcd
 
 go 1.17
 

@@ -1,5 +1,5 @@
 /*
-* docker-machine-driver-vcloud-director
+* docker-machine-driver-vcd
 * Copyright (C) 2017  Juan Manuel Irigaray
 *
 * This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,7 @@ package main
 
 import (
 	"github.com/docker/machine/libmachine/drivers/plugin"
-	"github.com/negashev/docker-machine-driver-vcloud-director/vmwarevcloud"
+	"github.com/negashev/docker-machine-driver-vcd/vmwarevcloud"
 )
 
 func main() {
