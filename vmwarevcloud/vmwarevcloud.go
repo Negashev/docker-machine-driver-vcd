@@ -474,7 +474,7 @@ func (d *Driver) Create() error {
 	}
 
 	// fix resolv
-	GuestCustomizationSection.CustomizationScript += "\necho \"nameserver 1.1.1.1\" >> /etc/resolv.conf"
+	GuestCustomizationSection.CustomizationScript += "\necho \"nameserver 1.1.1.1\" >> /etc/resolv.conf\n\n"
 
 	GuestCustomizationSection.CustomizationScript += d.UserData
 
