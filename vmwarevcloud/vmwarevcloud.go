@@ -90,110 +90,110 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 	return []mcnflag.Flag{
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_USERNAME",
-			Name:   "vcloud-director-username",
+			Name:   "vcd-username",
 			Usage:  "vCloud Director username",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_PASSWORD",
-			Name:   "vcloud-director-password",
+			Name:   "vcd-password",
 			Usage:  "vCloud Director password",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_VDC",
-			Name:   "vcloud-director-vdc",
+			Name:   "vcd-vdc",
 			Usage:  "vCloud Director Virtual Data Center",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_VDCEDGEGATEWAY",
-			Name:   "vcloud-director-vdcedgegateway",
+			Name:   "vcd-vdcedgegateway",
 			Usage:  "vCloud Director Virtual Data Center Edge Gateway",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_ORG",
-			Name:   "vcloud-director-org",
+			Name:   "vcd-org",
 			Usage:  "vCloud Director Organization",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_ORGVDCNETWORK",
-			Name:   "vcloud-director-orgvdcnetwork",
+			Name:   "vcd-orgvdcnetwork",
 			Usage:  "vCloud Direcotr Org VDC Network",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_EDGEGATEWAY",
-			Name:   "vcloud-director-edgegateway",
+			Name:   "vcd-edgegateway",
 			Usage:  "vCloud Director Edge Gateway (Default is <vdc>)",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_PUBLICIP",
-			Name:   "vcloud-director-publicip",
+			Name:   "vcd-publicip",
 			Usage:  "vCloud Director Org Public IP to use",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_CATALOG",
-			Name:   "vcloud-director-catalog",
+			Name:   "vcd-catalog",
 			Usage:  "vCloud Director Catalog (default is Public Catalog)",
 			Value:  defaultCatalog,
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_CATALOGITEM",
-			Name:   "vcloud-director-catalogitem",
+			Name:   "vcd-catalogitem",
 			Usage:  "vCloud Director Catalog Item (default is Ubuntu Precise)",
 			Value:  defaultCatalogItem,
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_STORPROFILE",
-			Name:   "vcloud-director-storprofile",
+			Name:   "vcd-storprofile",
 			Usage:  "vCloud Storage Profile name",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_HREF",
-			Name:   "vcloud-director-href",
+			Name:   "vcd-href",
 			Usage:  "vCloud Director API Endpoint",
 		},
 		mcnflag.BoolFlag{
 			EnvVar: "VCLOUDDIRECTOR_INSECURE",
-			Name:   "vcloud-director-insecure",
+			Name:   "vcd-insecure",
 			Usage:  "vCloud Director allow non secure connections",
 		},
 		mcnflag.IntFlag{
 			EnvVar: "VCLOUDDIRECTOR_CPU_COUNT",
-			Name:   "vcloud-director-cpu-count",
+			Name:   "vcd-cpu-count",
 			Usage:  "vCloud Director VM Cpu Count (default 1)",
 			Value:  defaultCpus,
 		},
 		mcnflag.IntFlag{
 			EnvVar: "VCLOUDDIRECTOR_MEMORY_SIZE",
-			Name:   "vcloud-director-memory-size",
+			Name:   "vcd-memory-size",
 			Usage:  "vCloud Director VM Memory Size in MB (default 2048)",
 			Value:  defaultMemory,
 		},
 		mcnflag.IntFlag{
 			EnvVar: "VCLOUDDIRECTOR_DISK_SIZE",
-			Name:   "vcloud-director-disk-size",
+			Name:   "vcd-disk-size",
 			Usage:  "vCloud Director VM Disk Size in MB (default 20480)",
 			Value:  defaultDisk,
 		},
 		mcnflag.IntFlag{
 			EnvVar: "VCLOUDDIRECTOR_SSH_PORT",
-			Name:   "vcloud-director-ssh-port",
+			Name:   "vcd-ssh-port",
 			Usage:  "vCloud Director SSH port",
 			Value:  defaultSSHPort,
 		},
 		mcnflag.IntFlag{
 			EnvVar: "VCLOUDDIRECTOR_DOCKER_PORT",
-			Name:   "vcloud-director-docker-port",
+			Name:   "vcd-docker-port",
 			Usage:  "vCloud Director Docker port",
 			Value:  defaultDockerPort,
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_SSH_USER",
-			Name:   "vcloud-director-ssh-user",
+			Name:   "vcd-ssh-user",
 			Usage:  "vCloud Director SSH user",
 			Value:  defaultSSHUser,
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCLOUDDIRECTOR_USER_DATA",
-			Name:   "vcloud-director-user-data",
+			Name:   "vcd-user-data",
 			Usage:  "Cloud-init based User data",
 			Value:  "",
 		},
@@ -223,25 +223,25 @@ func (d *Driver) GetSSHHostname() (string, error) {
 
 // DriverName returns the name of the driver
 func (d *Driver) DriverName() string {
-	return "vcloud-director"
+	return "vcd"
 }
 
 func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 
-	d.UserName = flags.String("vcloud-director-username")
-	d.UserPassword = flags.String("vcloud-director-password")
-	d.VDC = flags.String("vcloud-director-vdc")
-	d.Org = flags.String("vcloud-director-org")
-	d.Href = flags.String("vcloud-director-href")
-	d.Insecure = flags.Bool("vcloud-director-insecure")
-	d.PublicIP = flags.String("vcloud-director-publicip")
-	d.StorProfile = flags.String("vcloud-director-storprofile")
-	d.UserData = flags.String("vcloud-director-user-data")
+	d.UserName = flags.String("vcd-username")
+	d.UserPassword = flags.String("vcd-password")
+	d.VDC = flags.String("vcd-vdc")
+	d.Org = flags.String("vcd-org")
+	d.Href = flags.String("vcd-href")
+	d.Insecure = flags.Bool("vcd-insecure")
+	d.PublicIP = flags.String("vcd-publicip")
+	d.StorProfile = flags.String("vcd-storprofile")
+	d.UserData = flags.String("vcd-user-data")
 	d.SetSwarmConfigFromFlags(flags)
 
 	// Check for required Params
 	if d.UserName == "" || d.UserPassword == "" || d.Href == "" || d.VDC == "" || d.Org == "" || d.StorProfile == "" {
-		return fmt.Errorf("Please specify vclouddirector mandatory params using options: -vcloud-director-username -vcloud-director-password -vcloud-director-vdc -vcloud-director-href -vcloud-director-org and -vcloud-director-storprofile")
+		return fmt.Errorf("Please specify vclouddirector mandatory params using options: -vcd-username -vcd-password -vcd-vdc -vcd-href -vcd-org and -vcd-storprofile")
 	}
 
 	u, err := url.ParseRequestURI(d.Href)
@@ -251,34 +251,34 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.Url = u
 
 	// If the Org VDC Network is empty, set it to the default routed network.
-	if flags.String("vcloud-director-orgvdcnetwork") == "" {
-		d.OrgVDCNet = flags.String("vcloud-director-vdc") + "-default-routed"
+	if flags.String("vcd-orgvdcnetwork") == "" {
+		d.OrgVDCNet = flags.String("vcd-vdc") + "-default-routed"
 	} else {
-		d.OrgVDCNet = flags.String("vcloud-director-orgvdcnetwork")
+		d.OrgVDCNet = flags.String("vcd-orgvdcnetwork")
 	}
 
 	// If the Edge Gateway is empty, just set it to the default edge gateway.
-	// if flags.String("vcloud-director-edgegateway") == "" {
-	// 	d.EdgeGateway = flags.String("vcloud-director-org")
+	// if flags.String("vcd-edgegateway") == "" {
+	// 	d.EdgeGateway = flags.String("vcd-org")
 	// } else {
-	d.EdgeGateway = flags.String("vcloud-director-edgegateway")
+	d.EdgeGateway = flags.String("vcd-edgegateway")
 	// }
 
-	if flags.String("vcloud-director-vdcedgegateway") == "" {
-		d.VdcEdgeGateway = flags.String("vcloud-director-vdc")
+	if flags.String("vcd-vdcedgegateway") == "" {
+		d.VdcEdgeGateway = flags.String("vcd-vdc")
 	} else {
-		d.VdcEdgeGateway = flags.String("vcloud-director-vdcedgegateway")
+		d.VdcEdgeGateway = flags.String("vcd-vdcedgegateway")
 	}
 
-	d.Catalog = flags.String("vcloud-director-catalog")
-	d.CatalogItem = flags.String("vcloud-director-catalogitem")
+	d.Catalog = flags.String("vcd-catalog")
+	d.CatalogItem = flags.String("vcd-catalogitem")
 
-	d.DockerPort = flags.Int("vcloud-director-docker-port")
-	d.SSHUser = flags.String("vcloud-director-ssh-user")
-	d.SSHPort = flags.Int("vcloud-director-ssh-port")
-	d.CPUCount = flags.Int("vcloud-director-cpu-count")
-	d.MemorySize = flags.Int("vcloud-director-memory-size")
-	d.DiskSize = flags.Int("vcloud-director-disk-size")
+	d.DockerPort = flags.Int("vcd-docker-port")
+	d.SSHUser = flags.String("vcd-ssh-user")
+	d.SSHPort = flags.Int("vcd-ssh-port")
+	d.CPUCount = flags.Int("vcd-cpu-count")
+	d.MemorySize = flags.Int("vcd-memory-size")
+	d.DiskSize = flags.Int("vcd-disk-size")
 	d.PrivateIP = d.PublicIP
 
 	return nil
