@@ -55,6 +55,7 @@ type Driver struct {
 	CatalogItem    string
 	StorProfile    string
 	UserData       string
+	InitData       string
 	DockerPort     int
 	CPUCount       int
 	MemorySize     int
@@ -216,6 +217,12 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "Cloud-init based User data",
 			Value:  "",
 		},
+		mcnflag.StringFlag{
+			EnvVar: "VCD_INIT_DATA",
+			Name:   "vcd-init-data",
+			Usage:  "Cloud-init based User data before everything",
+			Value:  "",
+		},
 	}
 }
 
@@ -258,6 +265,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.PublicIP = flags.String("vcd-publicip")
 	d.StorProfile = flags.String("vcd-storprofile")
 	d.UserData = flags.String("vcd-user-data")
+	d.InitData = flags.String("vcd-init-data")
 	d.SetSwarmConfigFromFlags(flags)
 
 	// Check for required Params
@@ -486,8 +494,9 @@ func (d *Driver) Create() error {
 
 	GuestCustomizationSection.AdminPasswordEnabled = takeBoolPointer(false)
 
+	GuestCustomizationSection.CustomizationScript = d.InitData + "\n"
 	// add user
-	GuestCustomizationSection.CustomizationScript = "useradd -m -d /home/" + d.SSHUser + " -s /bin/bash " + d.SSHUser + "\nmkdir -p /home/" + d.SSHUser + "/.ssh\nchown -R " + d.SSHUser + ":" + d.SSHUser + " /home/" + d.SSHUser + "/.ssh\nchmod 700 /home/" + d.SSHUser + "/.ssh\nchmod 600 /home/" + d.SSHUser + "/.ssh/authorized_keys\nusermod -a -G sudo " + d.SSHUser + "\necho \"" + strings.TrimSpace(key) + "\" > /home/" + d.SSHUser + "/.ssh/authorized_keys\npasswd -d " + d.SSHUser + "\nswapoff -a\nrm -rf /swap.img\n"
+	GuestCustomizationSection.CustomizationScript += "\nuseradd -m -d /home/" + d.SSHUser + " -s /bin/bash " + d.SSHUser + "\nmkdir -p /home/" + d.SSHUser + "/.ssh\nchown -R " + d.SSHUser + ":" + d.SSHUser + " /home/" + d.SSHUser + "/.ssh\nchmod 700 /home/" + d.SSHUser + "/.ssh\nchmod 600 /home/" + d.SSHUser + "/.ssh/authorized_keys\nusermod -a -G sudo " + d.SSHUser + "\necho \"" + strings.TrimSpace(key) + "\" > /home/" + d.SSHUser + "/.ssh/authorized_keys\npasswd -d " + d.SSHUser + "\nswapoff -a\nrm -rf /swap.img\n"
 
 	// resize rootFS for ubuntu
 	if strings.HasPrefix(d.CatalogItem, "ubuntu") {
