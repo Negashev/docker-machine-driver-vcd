@@ -501,16 +501,18 @@ func (d *Driver) Create() error {
 
 	if d.Rke2 == true {
 		// if rke2
-		cloudInit := getRancherCloudInit(d.UserData)
+		readUserData, err := ioutil.ReadFile(d.UserData)
+		if err != nil {
+			return err
+		}	
+		cloudInit := getRancherCloudInit(string(readUserData))
 
 		// generate install.sh  file
-		cloudInitWithQuotes := strings.Join([]string{"'", cloudInit, "'"}, "")
-		commandUserData := []string{"mkdir", "-p", "/usr/local/custom_script", "\n",
-			"echo", cloudInitWithQuotes, "|", "base64", "-d", "|", "gunzip", "|", "sudo", "tee", "/usr/local/custom_script/install.sh", "\n",
-			"sh", "/usr/local/custom_script/install.sh"}
-
 		log.Infof(" -> Generate and Run /usr/local/custom_script/install.sh file")
-		GuestCustomizationSection.CustomizationScript += strings.Join(commandUserData, " ")
+		cloudInitWithQuotes := strings.Join([]string{"'", cloudInit, "'"}, "")
+		GuestCustomizationSection.CustomizationScript += "mkdir -p /usr/local/custom_script\n"
+		GuestCustomizationSection.CustomizationScript += "echo" + cloudInitWithQuotes + "| base64 -d | gunzip | sudo tee /usr/local/custom_script/install.sh\n"
+		GuestCustomizationSection.CustomizationScript += "sh /usr/local/custom_script/install.sh\n"
 	} else {
 		// if rke1
 		GuestCustomizationSection.CustomizationScript += d.UserData
