@@ -492,9 +492,7 @@ func (d *Driver) Create() error {
 	log.Infof("Running customization script (SSH)...")
 	GuestCustomizationSection := vm.VM.GuestCustomizationSection
 
-	GuestCustomizationSection.AdminPasswordEnabled = takeBoolPointer(true)
-	GuestCustomizationSection.AdminPassword = "qwerty"
-	GuestCustomizationSection.AdminPasswordAuto = takeBoolPointer(false)
+	GuestCustomizationSection.AdminPasswordEnabled = takeBoolPointer(false)
 
 	GuestCustomizationSection.CustomizationScript = d.InitData + "\n"
 	// add user
