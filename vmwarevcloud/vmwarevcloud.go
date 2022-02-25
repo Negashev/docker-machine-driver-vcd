@@ -37,6 +37,8 @@ import (
 	"github.com/docker/machine/libmachine/mcnutils"
 	"github.com/docker/machine/libmachine/ssh"
 	"github.com/docker/machine/libmachine/state"
+
+	"gopkg.in/yaml.v2"
 )
 
 type Driver struct {
@@ -62,6 +64,17 @@ type Driver struct {
 	Url            *url.URL
 	Org            string
 	Insecure       bool
+	Rke2           bool
+}
+
+type RancherCloudInit struct {
+	Runcmd     []string `yaml:"runcmd"`
+	WriteFiles []struct {
+		Content     string `yaml:"content"`
+		Encoding    string `yaml:"encoding"`
+		Path        string `yaml:"path"`
+		Permissions string `yaml:"permissions"`
+	} `yaml:"write_files"`
 }
 
 const (
@@ -73,6 +86,7 @@ const (
 	defaultSSHPort     = 22
 	defaultDockerPort  = 2376
 	defaultInsecure    = false
+	defaultRke2        = false
 	defaultSSHUser     = "docker"
 )
 
@@ -155,6 +169,11 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Name:   "vcd-insecure",
 			Usage:  "vCloud Director allow non secure connections",
 		},
+		mcnflag.BoolFlag{
+			EnvVar: "VCD_RKE2",
+			Name:   "vcd-rke2",
+			Usage:  "Allows user rancher RKE2 provisioning fix custom-install-script",
+		},
 		mcnflag.IntFlag{
 			EnvVar: "VCD_CPU_COUNT",
 			Name:   "vcd-cpu-count",
@@ -209,6 +228,7 @@ func NewDriver(hostName, storePath string) drivers.Driver {
 		DiskSize:    defaultDisk,
 		DockerPort:  defaultDockerPort,
 		Insecure:    defaultInsecure,
+		Rke2:        defaultRke2,
 		BaseDriver: &drivers.BaseDriver{
 			SSHPort:     defaultSSHPort,
 			MachineName: hostName,
@@ -234,6 +254,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.Org = flags.String("vcd-org")
 	d.Href = flags.String("vcd-href")
 	d.Insecure = flags.Bool("vcd-insecure")
+	d.Rke2 = flags.Bool("vcd-rke2")
 	d.PublicIP = flags.String("vcd-publicip")
 	d.StorProfile = flags.String("vcd-storprofile")
 	d.UserData = flags.String("vcd-user-data")
@@ -478,6 +499,22 @@ func (d *Driver) Create() error {
 
 	GuestCustomizationSection.CustomizationScript += d.UserData
 
+	if d.Rke2 == true {
+		// if rke2
+		cloudInit := getRancherCloudInit(d.UserData)
+
+		// generate install.sh  file
+		cloudInitWithQuotes := strings.Join([]string{"'", cloudInit, "'"}, "")
+		commandUserData := []string{"mkdir", "-p", "/usr/local/custom_script", "\n",
+			"echo", cloudInitWithQuotes, "|", "base64", "-d", "|", "gunzip", "|", "sudo", "tee", "/usr/local/custom_script/install.sh", "\n",
+			"sh", "/usr/local/custom_script/install.sh"}
+
+		log.Infof(" -> Generate and Run /usr/local/custom_script/install.sh file")
+		GuestCustomizationSection.CustomizationScript += strings.Join(commandUserData, " ")
+	} else {
+		// if rke1
+		GuestCustomizationSection.CustomizationScript += d.UserData
+	}
 	_, err = vm.SetGuestCustomizationSection(GuestCustomizationSection)
 	if err != nil {
 		return err
@@ -829,4 +866,19 @@ func (d *Driver) createSSHKey() (string, error) {
 
 func (d *Driver) publicSSHKeyPath() string {
 	return d.GetSSHKeyPath() + ".pub"
+}
+
+func getRancherCloudInit(s string) string {
+
+	out := RancherCloudInit{}
+	err := yaml.Unmarshal([]byte(s), &out)
+	if err != nil {
+		log.Debugf("Unmarshal: %v", err)
+	}
+
+	for _, entry := range out.WriteFiles {
+		return entry.Content
+	}
+
+	return ""
 }
