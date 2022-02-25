@@ -497,8 +497,6 @@ func (d *Driver) Create() error {
 	// fix resolv
 	// GuestCustomizationSection.CustomizationScript += "\nsed -i_bak \"s/\\(nameserver\\) .*/\\1 127.0.0.53\\nnameserver 1.1.1.1/\" /etc/resolv.conf\n\n"
 
-	GuestCustomizationSection.CustomizationScript += d.UserData
-
 	if d.Rke2 == true {
 		// if rke2
 		readUserData, err := ioutil.ReadFile(d.UserData)
@@ -511,7 +509,7 @@ func (d *Driver) Create() error {
 		log.Infof(" -> Generate and Run /usr/local/custom_script/install.sh file")
 		cloudInitWithQuotes := strings.Join([]string{"'", cloudInit, "'"}, "")
 		GuestCustomizationSection.CustomizationScript += "mkdir -p /usr/local/custom_script\n"
-		GuestCustomizationSection.CustomizationScript += "echo" + cloudInitWithQuotes + "| base64 -d | gunzip | sudo tee /usr/local/custom_script/install.sh\n"
+		GuestCustomizationSection.CustomizationScript += "echo " + cloudInitWithQuotes + " | base64 -d | gunzip | sudo tee /usr/local/custom_script/install.sh\n"
 		GuestCustomizationSection.CustomizationScript += "sh /usr/local/custom_script/install.sh\n"
 	} else {
 		// if rke1
