@@ -495,8 +495,6 @@ func (d *Driver) Create() error {
 	GuestCustomizationSection.AdminPasswordEnabled = takeBoolPointer(false)
 
 	GuestCustomizationSection.CustomizationScript = d.InitData + "\n"
-	
-	GuestCustomizationSection.CustomizationScript += "hostname " + d.MachineName + "\necho " + d.MachineName + " | sudo tee /etc/hostname\n\n"
 	// add user
 	GuestCustomizationSection.CustomizationScript += "\nuseradd -m -d /home/" + d.SSHUser + " -s /bin/bash " + d.SSHUser + "\nmkdir -p /home/" + d.SSHUser + "/.ssh\nchown -R " + d.SSHUser + ":" + d.SSHUser + " /home/" + d.SSHUser + "/.ssh\nchmod 700 /home/" + d.SSHUser + "/.ssh\nchmod 600 /home/" + d.SSHUser + "/.ssh/authorized_keys\nusermod -a -G sudo " + d.SSHUser + "\necho \"" + strings.TrimSpace(key) + "\" > /home/" + d.SSHUser + "/.ssh/authorized_keys\npasswd -d " + d.SSHUser + "\nswapoff -a\nrm -rf /swap.img\n"
 
@@ -521,6 +519,7 @@ func (d *Driver) Create() error {
 		cloudInitWithQuotes := strings.Join([]string{"'", cloudInit, "'"}, "")
 		GuestCustomizationSection.CustomizationScript += "mkdir -p /usr/local/custom_script\n"
 		GuestCustomizationSection.CustomizationScript += "echo " + cloudInitWithQuotes + " | base64 -d | gunzip | sudo tee /usr/local/custom_script/install.sh\n"
+		GuestCustomizationSection.CustomizationScript += "\nhostnamectl set-hostname " + d.MachineName + "\necho " + d.MachineName + " > /etc/hostname\n"
 		GuestCustomizationSection.CustomizationScript += "nohup sh /usr/local/custom_script/install.sh --node-name " + d.MachineName + " > /dev/null 2>&1 &\n"
 		GuestCustomizationSection.CustomizationScript += "exit 0\n"
 	} else {
