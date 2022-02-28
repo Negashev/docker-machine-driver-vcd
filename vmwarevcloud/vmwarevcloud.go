@@ -519,7 +519,7 @@ func (d *Driver) Create() error {
 		cloudInitWithQuotes := strings.Join([]string{"'", cloudInit, "'"}, "")
 		GuestCustomizationSection.CustomizationScript += "mkdir -p /usr/local/custom_script\n"
 		GuestCustomizationSection.CustomizationScript += "echo " + cloudInitWithQuotes + " | base64 -d | gunzip | sudo tee /usr/local/custom_script/install.sh\n"
-		GuestCustomizationSection.CustomizationScript += "\nhostnamectl set-hostname " + d.MachineName + "\necho " + d.MachineName + " > /etc/hostname\n"
+		GuestCustomizationSection.CustomizationScript += "\necho " + d.MachineName + " > /proc/sys/kernel/hostname\necho " + d.MachineName + " > /etc/hostname\nhostnamectl set-hostname " + d.MachineName + "\n"
 		GuestCustomizationSection.CustomizationScript += "nohup sh /usr/local/custom_script/install.sh --node-name " + d.MachineName + " > /dev/null 2>&1 &\n"
 		GuestCustomizationSection.CustomizationScript += "exit 0\n"
 	} else {
