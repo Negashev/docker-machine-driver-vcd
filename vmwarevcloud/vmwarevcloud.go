@@ -521,7 +521,7 @@ func (d *Driver) Create() error {
 		cloudInitWithQuotes := strings.Join([]string{"'", cloudInit, "'"}, "")
 		GuestCustomizationSection.CustomizationScript += "mkdir -p /usr/local/custom_script\n"
 		GuestCustomizationSection.CustomizationScript += "echo " + cloudInitWithQuotes + " | base64 -d | gunzip | sudo tee /usr/local/custom_script/install.sh\n"
-		GuestCustomizationSection.CustomizationScript += "nohup 'RKE2_NODE_NAME=" + d.MachineName + "' sh /usr/local/custom_script/install.sh > /dev/null 2>&1 &\n"
+		GuestCustomizationSection.CustomizationScript += "nohup sh /usr/local/custom_script/install.sh --node-name " + d.MachineName + " > /dev/null 2>&1 &\n"
 		GuestCustomizationSection.CustomizationScript += "exit 0\n"
 	} else {
 		// if rke1
