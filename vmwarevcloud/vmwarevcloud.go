@@ -322,10 +322,7 @@ func (d *Driver) GetURL() (string, error) {
 }
 
 func (d *Driver) GetIP() (string, error) {
-	if d.PublicIP == "" {
-		return d.PrivateIP, nil
-	}
-	return d.PublicIP, nil
+	return d.PrivateIP, nil
 }
 
 func (d *Driver) GetState() (state.State, error) {
