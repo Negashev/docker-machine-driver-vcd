@@ -501,6 +501,9 @@ func (d *Driver) Create() error {
 		GuestCustomizationSection.CustomizationScript += "\ngrowpart /dev/sda 3\npvresize /dev/sda3\nlvextend -l 100%VG /dev/mapper/ubuntu--vg-ubuntu--lv\nresize2fs /dev/mapper/ubuntu--vg-ubuntu--lv\n"
 	}
 
+	GuestCustomizationSection.CustomizationScript += "\nsed -i 's/.*PermitRootLogin.*/PermitRootLogin no/g' /etc/ssh/sshd_config\n"
+	GuestCustomizationSection.CustomizationScript += "\nservice sshd restart"
+
 	// fix resolv
 	// GuestCustomizationSection.CustomizationScript += "\nsed -i_bak \"s/\\(nameserver\\) .*/\\1 127.0.0.53\\nnameserver 1.1.1.1/\" /etc/resolv.conf\n\n"
 
