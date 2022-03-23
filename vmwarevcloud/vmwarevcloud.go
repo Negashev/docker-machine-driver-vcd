@@ -502,7 +502,7 @@ func (d *Driver) Create() error {
 	}
 
 	GuestCustomizationSection.CustomizationScript += "\nsed -i 's/.*PermitRootLogin.*/PermitRootLogin no/g' /etc/ssh/sshd_config\n"
-	GuestCustomizationSection.CustomizationScript += "\nservice sshd restart"
+	GuestCustomizationSection.CustomizationScript += "\nservice sshd restart\n"
 
 	// fix resolv
 	// GuestCustomizationSection.CustomizationScript += "\nsed -i_bak \"s/\\(nameserver\\) .*/\\1 127.0.0.53\\nnameserver 1.1.1.1/\" /etc/resolv.conf\n\n"
