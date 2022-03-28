@@ -499,6 +499,7 @@ func (d *Driver) Create() error {
 	// resize rootFS for ubuntu
 	if strings.HasPrefix(d.CatalogItem, "ubuntu") {
 		GuestCustomizationSection.CustomizationScript += "\ngrowpart /dev/sda 3\npvresize /dev/sda3\nlvextend -l 100%VG /dev/mapper/ubuntu--vg-ubuntu--lv\nresize2fs /dev/mapper/ubuntu--vg-ubuntu--lv\n"
+		GuestCustomizationSection.CustomizationScript += "\nuserdel -r ubuntu || echo true\n"
 	}
 
 	GuestCustomizationSection.CustomizationScript += "\nsed -i 's/.*PermitRootLogin.*/PermitRootLogin no/g' /etc/ssh/sshd_config\n"
