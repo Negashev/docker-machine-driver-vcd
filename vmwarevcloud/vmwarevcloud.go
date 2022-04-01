@@ -504,7 +504,7 @@ func (d *Driver) Create() error {
 	}
 	if strings.HasPrefix(d.CatalogItem, "ubuntu18") {
 		GuestCustomizationSection.CustomizationScript += "\nrm -rf /swapfile\n"
-		GuestCustomizationSection.CustomizationScript += "\napt -y install cloud-guest-utils\ngrowpart /dev/sda 2\nresize2fs /dev/sda2\n"
+		GuestCustomizationSection.CustomizationScript += "\napt -y install cloud-guest-utils curl\ngrowpart /dev/sda 2\nresize2fs /dev/sda2\n"
 		GuestCustomizationSection.CustomizationScript += "\nuserdel -r ubuntu || echo true\n"
 	}
 
