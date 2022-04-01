@@ -494,11 +494,17 @@ func (d *Driver) Create() error {
 
 	GuestCustomizationSection.CustomizationScript = d.InitData + "\n"
 	// add user
-	GuestCustomizationSection.CustomizationScript += "\nuseradd -m -d /home/" + d.SSHUser + " -s /bin/bash " + d.SSHUser + "\nmkdir -p /home/" + d.SSHUser + "/.ssh\nchown -R " + d.SSHUser + ":" + d.SSHUser + " /home/" + d.SSHUser + "/.ssh\nchmod 700 /home/" + d.SSHUser + "/.ssh\nchmod 600 /home/" + d.SSHUser + "/.ssh/authorized_keys\nusermod -a -G sudo " + d.SSHUser + "\necho \"" + strings.TrimSpace(key) + "\" > /home/" + d.SSHUser + "/.ssh/authorized_keys\npasswd -d " + d.SSHUser + "\nswapoff -a\nrm -rf /swap.img\n"
+	GuestCustomizationSection.CustomizationScript += "\nuseradd -m -d /home/" + d.SSHUser + " -s /bin/bash " + d.SSHUser + "\nmkdir -p /home/" + d.SSHUser + "/.ssh\nchown -R " + d.SSHUser + ":" + d.SSHUser + " /home/" + d.SSHUser + "/.ssh\nchmod 700 /home/" + d.SSHUser + "/.ssh\nchmod 600 /home/" + d.SSHUser + "/.ssh/authorized_keys\nusermod -a -G sudo " + d.SSHUser + "\necho \"" + strings.TrimSpace(key) + "\" > /home/" + d.SSHUser + "/.ssh/authorized_keys\necho \"" + d.SSHUser + "     ALL=(ALL) NOPASSWD:ALL\" >>  /etc/sudoers\nswapoff -a\n"
 
-	// resize rootFS for ubuntu
-	if strings.HasPrefix(d.CatalogItem, "ubuntu") {
+	// resize rootFS for ubuntu*
+	if strings.HasPrefix(d.CatalogItem, "ubuntu20") {
+		GuestCustomizationSection.CustomizationScript += "\nrm -rf /swap.img\n"
 		GuestCustomizationSection.CustomizationScript += "\ngrowpart /dev/sda 3\npvresize /dev/sda3\nlvextend -l 100%VG /dev/mapper/ubuntu--vg-ubuntu--lv\nresize2fs /dev/mapper/ubuntu--vg-ubuntu--lv\n"
+		GuestCustomizationSection.CustomizationScript += "\nuserdel -r ubuntu || echo true\n"
+	}
+	if strings.HasPrefix(d.CatalogItem, "ubuntu18") {
+		GuestCustomizationSection.CustomizationScript += "\nrm -rf /swapfile\n"
+		GuestCustomizationSection.CustomizationScript += "\napt -y install cloud-guest-utils\ngrowpart /dev/sda 2\nresize2fs /dev/sda2\n"
 		GuestCustomizationSection.CustomizationScript += "\nuserdel -r ubuntu || echo true\n"
 	}
 
