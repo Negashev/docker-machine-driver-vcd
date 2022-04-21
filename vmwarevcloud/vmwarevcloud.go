@@ -293,11 +293,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.EdgeGateway = flags.String("vcd-edgegateway")
 	// }
 
-	if flags.String("vcd-vdcedgegateway") == "" {
-		d.VdcEdgeGateway = flags.String("vcd-vdc")
-	} else {
-		d.VdcEdgeGateway = flags.String("vcd-vdcedgegateway")
-	}
+	d.VdcEdgeGateway = flags.String("vcd-vdcedgegateway")
 
 	d.Catalog = flags.String("vcd-catalog")
 	d.CatalogItem = flags.String("vcd-catalogitem")
@@ -564,24 +560,58 @@ func (d *Driver) Create() error {
 	}
 
 	if d.EdgeGateway != "" && d.PublicIP != "" {
+		if d.VdcEdgeGateway != "" {
+			vdcGateway, err := org.GetVDCByName(d.VdcEdgeGateway, true)
+			if err != nil {
+				return err
+			}
+			edge, err := vdcGateway.GetEdgeGatewayByName(d.EdgeGateway, true)
+			if err != nil {
+				return err
+			}
 
-		vdcGateway, err := org.GetVDCByName(d.VdcEdgeGateway, true)
-		if err != nil {
-			return err
-		}
-		edge, err := vdcGateway.GetEdgeGatewayByName(d.EdgeGateway, true)
-		if err != nil {
-			return err
-		}
+			log.Infof("Creating NAT and Firewall Rules on %s...", d.EdgeGateway)
+			task, err = edge.Create1to1Mapping(vm.VM.NetworkConnectionSection.NetworkConnection[0].IPAddress, d.PublicIP, d.MachineName)
+			if err != nil {
+				return err
+			}
 
-		log.Infof("Creating NAT and Firewall Rules on %s...", d.EdgeGateway)
-		task, err = edge.Create1to1Mapping(vm.VM.NetworkConnectionSection.NetworkConnection[0].IPAddress, d.PublicIP, d.MachineName)
-		if err != nil {
-			return err
-		}
+			if err = task.WaitTaskCompletion(); err != nil {
+				return err
+			}
+		} else {
+			snatRuleDefinition := &types.NsxtNatRule{
+				Name: d.MachineName + "_snat",
+				Description: d.MachineName,
+				Enabled: true,
+				RuleType:          types.NsxtNatRuleTypeSnat,
+				ExternalAddresses: vm.VM.NetworkConnectionSection.NetworkConnection[0].IPAddress,
+				InternalAddresses: d.PublicIP,
+				FirewallMatch:     types.NsxtNatRuleFirewallMatchBypass,
+			}
+		
+			dnatRuleDefinition := &types.NsxtNatRule{
+				Name: d.MachineName + "_dnat",
+				Description: d.MachineName,
+				Enabled: true,
+				RuleType:          types.NsxtNatRuleTypeDnat,
+				ExternalAddresses: d.PublicIP,
+				InternalAddresses: vm.VM.NetworkConnectionSection.NetworkConnection[0].IPAddress,
+				FirewallMatch:     types.NsxtNatRuleFirewallMatchBypass,
+			}
 
-		if err = task.WaitTaskCompletion(); err != nil {
-			return err
+			adminOrg, err := p.GetAdminOrgByName(d.Org)
+			edge, err := adminOrg.GetNsxtEdgeGatewayByName(d.EdgeGateway)
+		
+			_, err = edge.CreateNatRule(snatRuleDefinition)
+			if err != nil {
+				return err
+			}
+		
+			_, err = edge.CreateNatRule(dnatRuleDefinition)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -630,23 +660,39 @@ func (d *Driver) Remove() error {
 	}
 
 	if d.EdgeGateway != "" && d.PublicIP != "" {
+		if d.VdcEdgeGateway != "" {
+			vdcGateway, err := org.GetVDCByName(d.VdcEdgeGateway, true)
+			if err != nil {
+				return err
+			}
+			edge, err := vdcGateway.GetEdgeGatewayByName(d.EdgeGateway, true)
+			if err != nil {
+				return err
+			}
 
-		vdcGateway, err := org.GetVDCByName(d.VdcEdgeGateway, true)
-		if err != nil {
-			return err
-		}
-		edge, err := vdcGateway.GetEdgeGatewayByName(d.EdgeGateway, true)
-		if err != nil {
-			return err
-		}
+			log.Infof("Removing NAT and Firewall Rules on %s...", d.EdgeGateway)
+			task, err := edge.Remove1to1Mapping(vapp.VApp.Children.VM[0].NetworkConnectionSection.NetworkConnection[0].IPAddress, d.PublicIP)
+			if err != nil {
+				return err
+			}
+			if err = task.WaitTaskCompletion(); err != nil {
+				return err
+			}
+		} else {
+			adminOrg, err := p.GetAdminOrgByName(d.Org)
+			edge, err := adminOrg.GetNsxtEdgeGatewayByName(d.EdgeGateway)
+		
+			dnat, err := edge.GetNatRuleByName(d.MachineName + "_dnat")
+			if err != nil {
+				return err
+			}
+			dnat.Delete()
 
-		log.Infof("Removing NAT and Firewall Rules on %s...", d.EdgeGateway)
-		task, err := edge.Remove1to1Mapping(vapp.VApp.Children.VM[0].NetworkConnectionSection.NetworkConnection[0].IPAddress, d.PublicIP)
-		if err != nil {
-			return err
-		}
-		if err = task.WaitTaskCompletion(); err != nil {
-			return err
+			snat, err := edge.GetNatRuleByName(d.MachineName + "_snat")
+			if err != nil {
+				return err
+			}
+			snat.Delete()
 		}
 	}
 
