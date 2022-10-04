@@ -56,6 +56,7 @@ type Driver struct {
 	StorProfile    string
 	UserData       string
 	InitData       string
+	AdapterType    string
 	DockerPort     int
 	CPUCount       int
 	MemorySize     int
@@ -89,6 +90,7 @@ const (
 	defaultInsecure    = false
 	defaultRke2        = false
 	defaultSSHUser     = "docker"
+	defaultAdapterType = ""
 )
 
 func takeIntAddress(x int) *int {
@@ -132,6 +134,12 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			EnvVar: "VCD_ORGVDCNETWORK",
 			Name:   "vcd-orgvdcnetwork",
 			Usage:  "vCloud Direcotr Org VDC Network",
+		},
+		mcnflag.StringFlag{
+			EnvVar: "VCD_NETWORKADAPTERTYPE",
+			Name:   "vcd-networkadaptertype",
+			Usage:  "vCloud Direcotr Network Adapter Type like VMXNET3",
+			Value:  "",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCD_EDGEGATEWAY",
@@ -236,6 +244,7 @@ func NewDriver(hostName, storePath string) drivers.Driver {
 		DockerPort:  defaultDockerPort,
 		Insecure:    defaultInsecure,
 		Rke2:        defaultRke2,
+		AdapterType: defaultAdapterType,
 		BaseDriver: &drivers.BaseDriver{
 			SSHPort:     defaultSSHPort,
 			MachineName: hostName,
@@ -266,6 +275,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.StorProfile = flags.String("vcd-storprofile")
 	d.UserData = flags.String("vcd-user-data")
 	d.InitData = flags.String("vcd-init-data")
+	d.AdapterType = flags.String("vcd-networkadaptertype")
 	d.SetSwarmConfigFromFlags(flags)
 
 	// Check for required Params
@@ -482,6 +492,37 @@ func (d *Driver) Create() error {
 		return fmt.Errorf("Error changing size: %s", err)
 	}
 
+	// If the Network Adapter Type change.
+	if d.AdapterType != "" {
+		log.Infof("Change Network to %s...", d.AdapterType)
+		netCfg, err := vm.GetNetworkConnectionSection()
+		if err != nil {
+			return fmt.Errorf("Error read network section for update: %s", err)
+		}
+
+		netCfg.NetworkConnection = netCfg.NetworkConnection[:0]
+		err = vm.UpdateNetworkConnectionSection(netCfg)
+		if err != nil {
+			return fmt.Errorf("Error truncate network: %s", err)
+		}
+
+		secondNic := &types.NetworkConnection{
+			Network:                 d.OrgVDCNet,
+			NetworkAdapterType:      d.AdapterType,
+			IPAddressAllocationMode: types.IPAllocationModeDHCP,
+			NetworkConnectionIndex:  0,
+			IsConnected:             true,
+			NeedsCustomization:      false,
+		}
+
+		netCfg.NetworkConnection = append(netCfg.NetworkConnection, secondNic)
+
+		err = vm.UpdateNetworkConnectionSection(netCfg)
+		if err != nil {
+			return fmt.Errorf("Error update network: %s", err)
+		}
+	}
+
 	log.Infof("Running customization script (SSH)...")
 	GuestCustomizationSection := vm.VM.GuestCustomizationSection
 	GuestCustomizationSection.ComputerName = d.MachineName
@@ -517,7 +558,7 @@ func (d *Driver) Create() error {
 		readUserData, err := ioutil.ReadFile(d.UserData)
 		if err != nil {
 			return err
-		}	
+		}
 		cloudInit := getRancherCloudInit(string(readUserData))
 
 		// generate install.sh  file
@@ -581,19 +622,19 @@ func (d *Driver) Create() error {
 			}
 		} else {
 			snatRuleDefinition := &types.NsxtNatRule{
-				Name: d.MachineName + "_snat",
-				Description: d.MachineName,
-				Enabled: true,
+				Name:              d.MachineName + "_snat",
+				Description:       d.MachineName,
+				Enabled:           true,
 				RuleType:          types.NsxtNatRuleTypeSnat,
 				ExternalAddresses: vm.VM.NetworkConnectionSection.NetworkConnection[0].IPAddress,
 				InternalAddresses: d.PublicIP,
 				FirewallMatch:     types.NsxtNatRuleFirewallMatchBypass,
 			}
-		
+
 			dnatRuleDefinition := &types.NsxtNatRule{
-				Name: d.MachineName + "_dnat",
-				Description: d.MachineName,
-				Enabled: true,
+				Name:              d.MachineName + "_dnat",
+				Description:       d.MachineName,
+				Enabled:           true,
 				RuleType:          types.NsxtNatRuleTypeDnat,
 				ExternalAddresses: d.PublicIP,
 				InternalAddresses: vm.VM.NetworkConnectionSection.NetworkConnection[0].IPAddress,
@@ -602,12 +643,12 @@ func (d *Driver) Create() error {
 
 			adminOrg, err := p.GetAdminOrgByName(d.Org)
 			edge, err := adminOrg.GetNsxtEdgeGatewayByName(d.EdgeGateway)
-		
+
 			_, err = edge.CreateNatRule(snatRuleDefinition)
 			if err != nil {
 				return err
 			}
-		
+
 			_, err = edge.CreateNatRule(dnatRuleDefinition)
 			if err != nil {
 				return err
@@ -681,7 +722,7 @@ func (d *Driver) Remove() error {
 		} else {
 			adminOrg, err := p.GetAdminOrgByName(d.Org)
 			edge, err := adminOrg.GetNsxtEdgeGatewayByName(d.EdgeGateway)
-		
+
 			dnat, err := edge.GetNatRuleByName(d.MachineName + "_dnat")
 			if err != nil {
 				return err
