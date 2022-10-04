@@ -285,6 +285,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.UserData = flags.String("vcd-user-data")
 	d.InitData = flags.String("vcd-init-data")
 	d.AdapterType = flags.String("vcd-networkadaptertype")
+	d.IPAddressAllocationMode = flags.String("vcd-ipaddressallocationmode")
 	d.SetSwarmConfigFromFlags(flags)
 
 	// Check for required Params
