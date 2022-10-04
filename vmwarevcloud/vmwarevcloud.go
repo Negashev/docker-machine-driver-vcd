@@ -57,6 +57,7 @@ type Driver struct {
 	UserData       string
 	InitData       string
 	AdapterType    string
+	IPAddressAllocationMode string
 	DockerPort     int
 	CPUCount       int
 	MemorySize     int
@@ -91,6 +92,7 @@ const (
 	defaultRke2        = false
 	defaultSSHUser     = "docker"
 	defaultAdapterType = ""
+	defaultIPAddressAllocationMode = types.IPAllocationModeDHCP
 )
 
 func takeIntAddress(x int) *int {
@@ -133,13 +135,19 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 		mcnflag.StringFlag{
 			EnvVar: "VCD_ORGVDCNETWORK",
 			Name:   "vcd-orgvdcnetwork",
-			Usage:  "vCloud Direcotr Org VDC Network",
+			Usage:  "vCloud Director Org VDC Network",
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCD_NETWORKADAPTERTYPE",
 			Name:   "vcd-networkadaptertype",
-			Usage:  "vCloud Direcotr Network Adapter Type like VMXNET3",
+			Usage:  "vCloud Director Network Adapter Type like VMXNET3",
 			Value:  "",
+		},
+		mcnflag.StringFlag{
+			EnvVar: "VCD_IPADDRESSALLOCATIONMODE",
+			Name:   "vcd-ipaddressallocationmode",
+			Usage:  "vCloud Director IP Address Allocation Mode like DHCP",
+			Value:  defaultIPAddressAllocationMode,
 		},
 		mcnflag.StringFlag{
 			EnvVar: "VCD_EDGEGATEWAY",
@@ -245,6 +253,7 @@ func NewDriver(hostName, storePath string) drivers.Driver {
 		Insecure:    defaultInsecure,
 		Rke2:        defaultRke2,
 		AdapterType: defaultAdapterType,
+		IPAddressAllocationMode: defaultIPAddressAllocationMode,
 		BaseDriver: &drivers.BaseDriver{
 			SSHPort:     defaultSSHPort,
 			MachineName: hostName,
@@ -509,7 +518,7 @@ func (d *Driver) Create() error {
 		secondNic := &types.NetworkConnection{
 			Network:                 d.OrgVDCNet,
 			NetworkAdapterType:      d.AdapterType,
-			IPAddressAllocationMode: types.IPAllocationModeDHCP,
+			IPAddressAllocationMode: d.IPAddressAllocationMode,
 			NetworkConnectionIndex:  0,
 			IsConnected:             true,
 			NeedsCustomization:      false,
