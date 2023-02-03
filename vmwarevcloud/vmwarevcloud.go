@@ -483,6 +483,17 @@ func (d *Driver) Create() error {
 			break
 		}
 	}
+	// Wait vm is status is not UNRESOLVED
+	for {
+		status, err := vapp.GetStatus()
+		if err != nil {
+			return fmt.Errorf("Get status vm: %s", err)
+		}
+		if status != "UNRESOLVED" {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
 
 	// Set VAppID with ID of the created VApp
 	vmSpecSection := vm.VM.VmSpecSection
