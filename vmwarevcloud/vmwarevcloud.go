@@ -494,6 +494,17 @@ func (d *Driver) Create() error {
 		}
 		time.Sleep(1 * time.Second)
 	}
+	// Wait vm is status is POWERED_OFF
+	for {
+		status, err := vapp.GetStatus()
+		if err != nil {
+			return fmt.Errorf("Get status vm: %s", err)
+		}
+		if status == "POWERED_OFF" {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
 
 	// Set VAppID with ID of the created VApp
 	vmSpecSection := vm.VM.VmSpecSection
