@@ -1,3 +1,4 @@
+DEPRECATED to https://github.com/DimKush/docker-driver-vcd
 vCloud Director driver for docker-machine
 
 Mandatory parameters:
